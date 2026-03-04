@@ -1,0 +1,106 @@
+version: "3.8"
+
+services:
+  # ─── Redis ──────────────────────────────────────────────
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: trescal-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # ─── FastAPI (Producer API) ─────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: trescal-api
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ─── Worker 1 ──────────────────────────────────────────
+  worker-1:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: trescal-worker-1
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    command: ["python", "-m", "app.worker_demo"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─── Worker 2 ──────────────────────────────────────────
+  worker-2:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: trescal-worker-2
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    command: ["python", "-m", "app.worker_demo"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─── Locust (부하 테스트) ────────────────────────────────
+  locust:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: trescal-locust
+    ports:
+      - "8089:8089"
+    environment:
+      LOCUST_HOST: http://api:8000
+    command:
+      [
+        "locust",
+        "-f",
+        "/app/tests/locustfile.py",
+        "--host",
+        "http://api:8000",
+        "--web-host",
+        "0.0.0.0",
+      ]
+    volumes:
+      - ./tests:/app/tests:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis-data:
