@@ -274,11 +274,11 @@ curl http://localhost:8000/health
 
 | 서비스   | 컨테이너명       | 포트 | 역할                      |
 | -------- | ---------------- | ---- | ------------------------- |
-| redis    | trescal-redis    | 6379 | Redis 7 (Alpine)          |
-| api      | trescal-api      | 8000 | FastAPI + Uvicorn         |
-| worker-1 | trescal-worker-1 | —    | Worker 프로세스           |
-| worker-2 | trescal-worker-2 | —    | Worker 프로세스           |
-| locust   | trescal-locust   | 8089 | Locust 부하 테스트 Web UI |
+| redis    | dispatcher-redis    | 6379 | Redis 7 (Alpine)          |
+| api      | dispatcher-api      | 8000 | FastAPI + Uvicorn         |
+| worker-1 | dispatcher-worker-1 | —    | Worker 프로세스           |
+| worker-2 | dispatcher-worker-2 | —    | Worker 프로세스           |
+| locust   | dispatcher-locust   | 8089 | Locust 부하 테스트 Web UI |
 
 ### 5.2 로컬 실행 (개발용)
 

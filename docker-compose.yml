@@ -4,7 +4,7 @@ services:
   # ─── Redis ──────────────────────────────────────────────
   redis:
     image: docker.io/library/redis:7-alpine
-    container_name: trescal-redis
+    container_name: dispatcher-redis
     ports:
       - "6379:6379"
     volumes:
@@ -22,7 +22,7 @@ services:
     build:
       context: .
       dockerfile: Containerfile
-    container_name: trescal-api
+    container_name: dispatcher-api
     ports:
       - "8000:8000"
     environment:
@@ -50,7 +50,7 @@ services:
     build:
       context: .
       dockerfile: Containerfile
-    container_name: trescal-worker-1
+    container_name: dispatcher-worker-1
     environment:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -65,7 +65,7 @@ services:
     build:
       context: .
       dockerfile: Containerfile
-    container_name: trescal-worker-2
+    container_name: dispatcher-worker-2
     environment:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -80,7 +80,7 @@ services:
     build:
       context: .
       dockerfile: Containerfile
-    container_name: trescal-locust
+    container_name: dispatcher-locust
     ports:
       - "8089:8089"
     environment:

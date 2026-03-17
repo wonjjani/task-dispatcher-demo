@@ -1,4 +1,4 @@
-# Trescal Architecture
+# Task Dispatcher Architecture
 
 Redis 기반 태스크 디스패처 시스템으로, FastAPI Producer와 다수의 Worker로 구성됩니다.
 
@@ -87,9 +87,9 @@ mkdir -p ~/.config/containers/systemd/
 Compose와 달리 Quadlet은 공유 네트워크를 자동 생성하지 않으므로 직접 설정해야 합니다.
 
 ```bash
-cat > ~/.config/containers/systemd/trescal.network << 'EOF'
+cat > ~/.config/containers/systemd/dispatcher.network << 'EOF'
 [Network]
-NetworkName=trescal-net
+NetworkName=dispatcher-net
 
 [Install]
 WantedBy=default.target
@@ -103,17 +103,17 @@ EOF
 #### Redis
 
 ```bash
-cat > ~/.config/containers/systemd/trescal-redis.container << 'EOF'
+cat > ~/.config/containers/systemd/dispatcher-redis.container << 'EOF'
 [Unit]
-Description=Trescal Redis
+Description=Task Dispatcher Redis
 After=local-fs.target
 
 [Container]
-ContainerName=trescal-redis
+ContainerName=dispatcher-redis
 Image=docker.io/library/redis:7-alpine
 PublishPort=6379:6379
 Volume=redis-data:/data
-Network=trescal.network
+Network=dispatcher.network
 
 [Service]
 Restart=on-failure
@@ -127,17 +127,17 @@ EOF
 #### API
 
 ```bash
-cat > ~/.config/containers/systemd/trescal-api.container << 'EOF'
+cat > ~/.config/containers/systemd/dispatcher-api.container << 'EOF'
 [Unit]
-Description=Trescal API
-After=trescal-redis.service
+Description=Task Dispatcher API
+After=dispatcher-redis.service
 
 [Container]
-ContainerName=trescal-api
-Image=docker.io/library/trescal-task-dispatcher-api:latest
+ContainerName=dispatcher-api
+Image=docker.io/library/task-dispatcher-api:latest
 PublishPort=8000:8000
-Network=trescal.network
-Environment=REDIS_HOST=trescal-redis
+Network=dispatcher.network
+Environment=REDIS_HOST=dispatcher-redis
 Environment=REDIS_PORT=6379
 
 [Service]
@@ -152,16 +152,16 @@ EOF
 #### Worker-1
 
 ```bash
-cat > ~/.config/containers/systemd/trescal-worker-1.container << 'EOF'
+cat > ~/.config/containers/systemd/dispatcher-worker-1.container << 'EOF'
 [Unit]
-Description=Trescal Worker 1
-After=trescal-redis.service
+Description=Task Dispatcher Worker 1
+After=dispatcher-redis.service
 
 [Container]
-ContainerName=trescal-worker-1
-Image=docker.io/library/trescal-task-dispatcher-worker-1:latest
-Network=trescal.network
-Environment=REDIS_HOST=trescal-redis
+ContainerName=dispatcher-worker-1
+Image=docker.io/library/task-dispatcher-worker-1:latest
+Network=dispatcher.network
+Environment=REDIS_HOST=dispatcher-redis
 Environment=REDIS_PORT=6379
 Exec=python -m app.worker_demo
 
@@ -177,16 +177,16 @@ EOF
 #### Worker-2
 
 ```bash
-cat > ~/.config/containers/systemd/trescal-worker-2.container << 'EOF'
+cat > ~/.config/containers/systemd/dispatcher-worker-2.container << 'EOF'
 [Unit]
-Description=Trescal Worker 2
-After=trescal-redis.service
+Description=Task Dispatcher Worker 2
+After=dispatcher-redis.service
 
 [Container]
-ContainerName=trescal-worker-2
-Image=docker.io/library/trescal-task-dispatcher-worker-2:latest
-Network=trescal.network
-Environment=REDIS_HOST=trescal-redis
+ContainerName=dispatcher-worker-2
+Image=docker.io/library/task-dispatcher-worker-2:latest
+Network=dispatcher.network
+Environment=REDIS_HOST=dispatcher-redis
 Environment=REDIS_PORT=6379
 Exec=python -m app.worker_demo
 
@@ -202,18 +202,18 @@ EOF
 #### Locust
 
 ```bash
-cat > ~/.config/containers/systemd/trescal-locust.container << 'EOF'
+cat > ~/.config/containers/systemd/dispatcher-locust.container << 'EOF'
 [Unit]
-Description=Trescal Locust
-After=trescal-api.service
+Description=Task Dispatcher Locust
+After=dispatcher-api.service
 
 [Container]
-ContainerName=trescal-locust
-Image=docker.io/library/trescal-task-dispatcher-locust:latest
+ContainerName=dispatcher-locust
+Image=docker.io/library/task-dispatcher-locust:latest
 PublishPort=8089:8089
-Network=trescal.network
-Environment=LOCUST_HOST=http://trescal-api:8000
-Exec=locust -f /app/tests/locustfile.py --host http://trescal-api:8000 --web-host 0.0.0.0
+Network=dispatcher.network
+Environment=LOCUST_HOST=http://dispatcher-api:8000
+Exec=locust -f /app/tests/locustfile.py --host http://dispatcher-api:8000 --web-host 0.0.0.0
 
 [Service]
 Restart=on-failure
@@ -231,11 +231,11 @@ EOF
 ```bash
 systemctl --user daemon-reload
 
-systemctl --user start trescal-redis.service
-systemctl --user start trescal-api.service
-systemctl --user start trescal-worker-1.service
-systemctl --user start trescal-worker-2.service
-systemctl --user start trescal-locust.service
+systemctl --user start dispatcher-redis.service
+systemctl --user start dispatcher-api.service
+systemctl --user start dispatcher-worker-1.service
+systemctl --user start dispatcher-worker-2.service
+systemctl --user start dispatcher-locust.service
 ```
 
 #### linger 활성화 (로그아웃 후에도 서비스 유지)
@@ -251,68 +251,68 @@ loginctl enable-linger $(whoami)
 #### 시작 스크립트
 
 ```bash
-cat > ~/trescal-start.sh << 'EOF'
+cat > ~/dispatcher-start.sh << 'EOF'
 #!/bin/bash
-systemctl --user start trescal-redis.service
-systemctl --user start trescal-api.service
-systemctl --user start trescal-worker-1.service
-systemctl --user start trescal-worker-2.service
+systemctl --user start dispatcher-redis.service
+systemctl --user start dispatcher-api.service
+systemctl --user start dispatcher-worker-1.service
+systemctl --user start dispatcher-worker-2.service
 echo "All services started."
 podman ps
 EOF
-chmod +x ~/trescal-start.sh
+chmod +x ~/dispatcher-start.sh
 ```
 
 #### 중지 스크립트
 
 ```bash
-cat > ~/trescal-stop.sh << 'EOF'
+cat > ~/dispatcher-stop.sh << 'EOF'
 #!/bin/bash
-systemctl --user stop trescal-worker-2.service
-systemctl --user stop trescal-worker-1.service
-systemctl --user stop trescal-api.service
-systemctl --user stop trescal-redis.service
+systemctl --user stop dispatcher-worker-2.service
+systemctl --user stop dispatcher-worker-1.service
+systemctl --user stop dispatcher-api.service
+systemctl --user stop dispatcher-redis.service
 echo "All services stopped."
 podman ps
 EOF
-chmod +x ~/trescal-stop.sh
+chmod +x ~/dispatcher-stop.sh
 ```
 
 #### 재시작 스크립트
 
 ```bash
-cat > ~/trescal-restart.sh << 'EOF'
+cat > ~/dispatcher-restart.sh << 'EOF'
 #!/bin/bash
-systemctl --user restart trescal-redis.service
-systemctl --user restart trescal-api.service
-systemctl --user restart trescal-worker-1.service
-systemctl --user restart trescal-worker-2.service
+systemctl --user restart dispatcher-redis.service
+systemctl --user restart dispatcher-api.service
+systemctl --user restart dispatcher-worker-1.service
+systemctl --user restart dispatcher-worker-2.service
 echo "All services restarted."
 podman ps
 EOF
-chmod +x ~/trescal-restart.sh
+chmod +x ~/dispatcher-restart.sh
 ```
 
 #### Locust 스크립트
 
 ```bash
-cat > ~/trescal-locust-start.sh << 'EOF'
+cat > ~/dispatcher-locust-start.sh << 'EOF'
 #!/bin/bash
-systemctl --user start trescal-locust.service
+systemctl --user start dispatcher-locust.service
 echo "Locust started."
 podman ps
 EOF
-chmod +x ~/trescal-locust-start.sh
+chmod +x ~/dispatcher-locust-start.sh
 ```
 
 ```bash
-cat > ~/trescal-locust-stop.sh << 'EOF'
+cat > ~/dispatcher-locust-stop.sh << 'EOF'
 #!/bin/bash
-systemctl --user stop trescal-locust.service
+systemctl --user stop dispatcher-locust.service
 echo "Locust stopped."
 podman ps
 EOF
-chmod +x ~/trescal-locust-stop.sh
+chmod +x ~/dispatcher-locust-stop.sh
 ```
 
 ---
@@ -322,21 +322,21 @@ chmod +x ~/trescal-locust-stop.sh
 #### podman machine ssh 안에서
 
 ```bash
-~/trescal-start.sh
-~/trescal-stop.sh
-~/trescal-restart.sh
-~/trescal-locust-start.sh
-~/trescal-locust-stop.sh
+~/dispatcher-start.sh
+~/dispatcher-stop.sh
+~/dispatcher-restart.sh
+~/dispatcher-locust-start.sh
+~/dispatcher-locust-stop.sh
 ```
 
 #### Windows 터미널에서 직접 실행
 
 ```bash
-podman machine ssh "~/trescal-start.sh"
-podman machine ssh "~/trescal-stop.sh"
-podman machine ssh "~/trescal-restart.sh"
-podman machine ssh "~/trescal-locust-start.sh"
-podman machine ssh "~/trescal-locust-stop.sh"
+podman machine ssh "~/dispatcher-start.sh"
+podman machine ssh "~/dispatcher-stop.sh"
+podman machine ssh "~/dispatcher-restart.sh"
+podman machine ssh "~/dispatcher-locust-start.sh"
+podman machine ssh "~/dispatcher-locust-stop.sh"
 ```
 
 ---
@@ -348,7 +348,7 @@ podman machine ssh "~/trescal-locust-stop.sh"
 podman compose build
 
 # 2. 서비스 재시작
-podman machine ssh "~/trescal-restart.sh"
+podman machine ssh "~/dispatcher-restart.sh"
 ```
 
 ---
@@ -357,13 +357,13 @@ podman machine ssh "~/trescal-restart.sh"
 
 ```bash
 # 서비스 상태 확인
-systemctl --user status trescal-api.service
+systemctl --user status dispatcher-api.service
 
 # 로그 확인
-journalctl --user -u trescal-api.service --no-pager -n 30
+journalctl --user -u dispatcher-api.service --no-pager -n 30
 
 # Quadlet 파일 확인
-cat ~/.config/containers/systemd/trescal-api.container
+cat ~/.config/containers/systemd/dispatcher-api.container
 
 # Quadlet 생성 결과 확인
 /usr/libexec/podman/quadlet -dryrun -user
@@ -377,9 +377,9 @@ podman ps
 ### kill 테스트 (자동 재시작 확인)
 
 ```bash
-podman kill trescal-api
+podman kill dispatcher-api
 sleep 5
-podman ps   # trescal-api가 다시 Running 상태로 복구되어야 함
+podman ps   # dispatcher-api가 다시 Running 상태로 복구되어야 함
 ```
 
 ---
@@ -387,12 +387,12 @@ podman ps   # trescal-api가 다시 Running 상태로 복구되어야 함
 ### Quadlet 정리 (삭제 시)
 
 ```bash
-systemctl --user stop trescal-locust.service trescal-worker-2.service trescal-worker-1.service trescal-api.service trescal-redis.service
-rm -f ~/.config/containers/systemd/trescal-*.container
-rm -f ~/.config/containers/systemd/trescal.network
+systemctl --user stop dispatcher-locust.service dispatcher-worker-2.service dispatcher-worker-1.service dispatcher-api.service dispatcher-redis.service
+rm -f ~/.config/containers/systemd/dispatcher-*.container
+rm -f ~/.config/containers/systemd/dispatcher.network
 systemctl --user daemon-reload
-rm -f ~/trescal-start.sh ~/trescal-stop.sh ~/trescal-restart.sh
-rm -f ~/trescal-locust-start.sh ~/trescal-locust-stop.sh
+rm -f ~/dispatcher-start.sh ~/dispatcher-stop.sh ~/dispatcher-restart.sh
+rm -f ~/dispatcher-locust-start.sh ~/dispatcher-locust-stop.sh
 ```
 
 ---

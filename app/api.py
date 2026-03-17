@@ -6,6 +6,7 @@ FastAPI 기반 작업 디스패처 API
 
 import json
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -91,12 +92,16 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 # Aspose License
 # ---------------------------------------------------------------------------
-lic = License()
-try:
-    lic.setLicense("app/Aspose.CellsforPythonviaJava.lic")
-    logger.info("Aspose license loaded successfully")
-except Exception as e:
-    logger.warning(f"Aspose license not loaded (evaluation mode): {e}")
+license_path = os.getenv("ASPOSE_LICENSE_PATH")
+if license_path:
+    lic = License()
+    try:
+        lic.setLicense(license_path)
+        logger.info("Aspose license loaded successfully")
+    except Exception as e:
+        logger.warning(f"Aspose license not loaded (evaluation mode): {e}")
+else:
+    logger.info("Aspose license path not configured; running in evaluation mode")
 
 
 # ---------------------------------------------------------------------------

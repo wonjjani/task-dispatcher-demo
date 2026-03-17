@@ -19,7 +19,7 @@
 ## 1. 프로젝트 파일 구조
 
 ```
-trescal-task-dispatcher/
+task-dispatcher/
 ├── app/
 │   ├── __init__.py          # 패키지 임포트 활성화
 │   ├── config.py            # 공유 설정 (환경변수 기반 Redis 접속, 키 접두사, TTL)
@@ -245,11 +245,11 @@ podman compose ps
 
 ```
 NAME               COMMAND                  STATUS
-trescal-redis      redis-server             Up (healthy)
-trescal-api        uvicorn app.api:app ...  Up (healthy)
-trescal-worker-1   python -m app.worker_d.. Up
-trescal-worker-2   python -m app.worker_d.. Up
-trescal-locust     locust -f /app/tests/..  Up
+dispatcher-redis      redis-server             Up (healthy)
+dispatcher-api        uvicorn app.api:app ...  Up (healthy)
+dispatcher-worker-1   python -m app.worker_d.. Up
+dispatcher-worker-2   python -m app.worker_d.. Up
+dispatcher-locust     locust -f /app/tests/..  Up
 ```
 
 ### 4.4 시연 시나리오
@@ -377,12 +377,12 @@ podman compose logs -f locust
 ### 6.3 Worker 로그 예시
 
 ```
-trescal-worker-1  | [14:30:02.100][worker] start worker=f7c8e2a1b3d9 queue=demo:queue
-trescal-worker-1  | [14:30:05.123][worker][running] job_id=a1b2c3d4 work_s=5.0 fail=False
-trescal-worker-1  | [14:30:10.125][worker][finish] job_id=a1b2c3d4
-trescal-worker-2  | [14:30:02.200][worker] start worker=c3d9e5f7a2b1 queue=demo:queue
-trescal-worker-2  | [14:30:05.130][worker][running] job_id=e5f6g7h8 work_s=1.0 fail=True
-trescal-worker-2  | [14:30:06.132][worker][fail] job_id=e5f6g7h8
+dispatcher-worker-1  | [14:30:02.100][worker] start worker=f7c8e2a1b3d9 queue=demo:queue
+dispatcher-worker-1  | [14:30:05.123][worker][running] job_id=a1b2c3d4 work_s=5.0 fail=False
+dispatcher-worker-1  | [14:30:10.125][worker][finish] job_id=a1b2c3d4
+dispatcher-worker-2  | [14:30:02.200][worker] start worker=c3d9e5f7a2b1 queue=demo:queue
+dispatcher-worker-2  | [14:30:05.130][worker][running] job_id=e5f6g7h8 work_s=1.0 fail=True
+dispatcher-worker-2  | [14:30:06.132][worker][fail] job_id=e5f6g7h8
 ```
 
 두 Worker의 호스트명(컨테이너 ID)이 다르게 표시되어 **수평 확장을 시각적으로 확인**할 수 있습니다.
@@ -390,8 +390,8 @@ trescal-worker-2  | [14:30:06.132][worker][fail] job_id=e5f6g7h8
 ### 6.4 Worker 크래시 로그 예시
 
 ```
-trescal-worker-1  | [14:35:00.500][worker][crash] job_id=x1y2z3w4 error=SomeException
-trescal-worker-1  | [14:35:00.502][worker] start worker=f7c8e2a1b3d9 queue=demo:queue
+dispatcher-worker-1  | [14:35:00.500][worker][crash] job_id=x1y2z3w4 error=SomeException
+dispatcher-worker-1  | [14:35:00.502][worker] start worker=f7c8e2a1b3d9 queue=demo:queue
 ```
 
 크래시 후에도 Worker가 자동 복구되어 다음 작업을 계속 처리합니다.
@@ -399,10 +399,10 @@ trescal-worker-1  | [14:35:00.502][worker] start worker=f7c8e2a1b3d9 queue=demo:
 ### 6.5 API 서버 로그 예시
 
 ```
-trescal-api  | INFO:     Uvicorn running on http://0.0.0.0:8000
-trescal-api  | INFO:     192.168.1.1:54321 - "POST /jobs HTTP/1.1" 200
-trescal-api  | INFO:     192.168.1.1:54322 - "GET /jobs/a1b2c3d4/status HTTP/1.1" 200
-trescal-api  | INFO:     192.168.1.1:54323 - "GET /health HTTP/1.1" 200
+dispatcher-api  | INFO:     Uvicorn running on http://0.0.0.0:8000
+dispatcher-api  | INFO:     192.168.1.1:54321 - "POST /jobs HTTP/1.1" 200
+dispatcher-api  | INFO:     192.168.1.1:54322 - "GET /jobs/a1b2c3d4/status HTTP/1.1" 200
+dispatcher-api  | INFO:     192.168.1.1:54323 - "GET /health HTTP/1.1" 200
 ```
 
 ### 6.6 키워드 필터링
@@ -421,7 +421,7 @@ podman compose logs -f -t
 ### 6.7 개별 컨테이너 직접 조회
 
 ```bash
-podman logs -f trescal-api
-podman logs -f trescal-worker-1
-podman logs --since 5m trescal-worker-2
+podman logs -f dispatcher-api
+podman logs -f dispatcher-worker-1
+podman logs --since 5m dispatcher-worker-2
 ```
