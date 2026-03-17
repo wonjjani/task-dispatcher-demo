@@ -311,3 +311,193 @@ Worker 처리 중 예외가 나면:
 핵심만 남기면 이 문장이다.
 
 `API는 작업을 넣고 기다리고, Worker는 작업을 꺼내 처리하고, Redis는 둘 사이의 상태와 결과를 연결한다.`
+
+## 19. 처음 설치하고 셋업하는 방법
+
+이 프로젝트를 처음 실행할 때는 `Podman의 모든 기능`을 한 번에 보려 하지 않는 편이 낫다.
+
+추천 순서는 이렇다.
+
+1. 먼저 `docker compose`로 구조를 이해한다.
+2. 그다음 `podman compose`로 같은 스택을 실행해본다.
+3. 마지막으로 `Quadlet + systemd`를 본다.
+
+이 순서가 좋은 이유는 아키텍처 학습과 Podman 운영 기능 학습을 분리할 수 있기 때문이다.
+
+## 20. 가장 쉬운 시작: Docker Compose
+
+문서상 이 프로젝트는 [`docker-compose.yml`](docker-compose.yml)을 기준으로 바로 실행할 수 있다.
+
+### 20.1 준비
+
+- Git 설치
+- Docker Desktop 또는 Docker Engine 설치
+
+### 20.2 저장소 받기
+
+```bash
+git clone <your-repo-url>
+cd task-dispatcher-demo
+git switch develop
+```
+
+### 20.3 컨테이너 실행
+
+```bash
+docker compose up -d --build
+```
+
+### 20.4 상태 확인
+
+```bash
+docker compose ps
+curl http://localhost:8000/health
+curl http://localhost:8000/stats
+```
+
+### 20.5 작업 요청 테스트
+
+```bash
+curl -X POST http://localhost:8000/jobs \
+  -H "Content-Type: application/json" \
+  -d '{"work_s": 3, "fail": false}'
+```
+
+### 20.6 로그 보기
+
+```bash
+docker compose logs -f api
+docker compose logs -f worker-1
+docker compose logs -f worker-2
+```
+
+### 20.7 종료
+
+```bash
+docker compose down
+```
+
+처음에는 이 단계만 해도 충분하다. 이걸로 `API -> Redis -> Worker -> 응답` 흐름을 모두 볼 수 있다.
+
+테스트 후 한 번에 정리하고 싶다면 아래 스크립트를 사용할 수 있다.
+
+```bash
+bash scripts/teardown_all.sh
+```
+
+## 21. Podman으로 실행하기
+
+문서 기준으로는 `podman compose`도 바로 지원한다.
+
+### 21.1 준비
+
+- Podman 설치
+
+### 21.2 실행
+
+```bash
+podman compose up -d --build
+```
+
+### 21.3 확인
+
+```bash
+podman compose ps
+curl http://localhost:8000/health
+curl http://localhost:8000/stats
+```
+
+### 21.4 종료
+
+```bash
+podman compose down
+```
+
+학습 목적이라면 `docker compose`와 `podman compose`의 차이를 크게 의식하지 않아도 된다. 둘 다 현재 저장소 구조를 이해하는 데는 충분하다.
+
+Podman Compose로 띄운 뒤에도 동일하게 아래 스크립트로 정리할 수 있다.
+
+```bash
+bash scripts/teardown_all.sh
+```
+
+## 22. 문서가 권장하는 Podman 심화 방식: Podman Machine + Quadlet
+
+[`README.md`](README.md)에서는 Podman의 운영형 관리 방식으로 `Quadlet + systemd`를 안내한다.
+
+핵심은 `Docker 컨테이너 안에 Podman을 넣는 방식`이 아니라, `Podman Machine 안으로 들어가서 systemd로 관리`하는 방식이라는 점이다.
+
+### 22.1 Podman Machine 접속
+
+```bash
+podman machine init
+podman machine start
+podman machine ssh
+```
+
+이후 명령은 `podman machine ssh` 안에서 실행한다.
+
+### 22.2 systemd 디렉토리 준비
+
+```bash
+mkdir -p ~/.config/containers/systemd/
+```
+
+### 22.3 Quadlet 네트워크 및 서비스 파일 생성
+
+문서에 있는 아래 파일들을 만든다.
+
+- `dispatcher.network`
+- `dispatcher-redis.container`
+- `dispatcher-api.container`
+- `dispatcher-worker-1.container`
+- `dispatcher-worker-2.container`
+- `dispatcher-locust.container`
+
+이 파일 내용은 [`README.md`](README.md)에 그대로 나와 있다.
+
+### 22.4 systemd 반영 및 시작
+
+```bash
+systemctl --user daemon-reload
+systemctl --user start dispatcher-redis.service
+systemctl --user start dispatcher-api.service
+systemctl --user start dispatcher-worker-1.service
+systemctl --user start dispatcher-worker-2.service
+systemctl --user start dispatcher-locust.service
+```
+
+### 22.5 로그아웃 후에도 유지하려면
+
+```bash
+loginctl enable-linger $(whoami)
+```
+
+이 단계는 "그냥 실행해보기"보다 "Podman에서 자동 재시작과 systemd 관리까지 확인해보기"에 가깝다.
+
+Quadlet로 올린 서비스까지 정리하려면 아래 스크립트를 실행하면 된다.
+
+```bash
+bash scripts/teardown_all.sh
+```
+
+## 23. 무엇부터 하면 좋나
+
+처음 공부할 때 추천 경로는 아래와 같다.
+
+1. `docker compose up -d --build`
+2. `curl /health`, `curl /jobs`, `curl /stats`
+3. `logs -f api`, `logs -f worker-1`, `logs -f worker-2`
+4. Worker를 일부러 중지하거나 요청을 여러 개 보내보며 큐 동작 확인
+5. 익숙해지면 `podman compose`
+6. 마지막에 `podman machine + quadlet`
+
+## 24. 중요한 주의점
+
+[`README.md`](README.md)에서도 분명히 말하듯이 다음은 피하는 편이 좋다.
+
+- Compose와 Quadlet을 동시에 사용하지 않기
+- 같은 포트와 같은 컨테이너 이름을 중복으로 띄우지 않기
+- 처음부터 Podman 운영 기능과 아키텍처 학습을 한 번에 하려고 하지 않기
+
+처음엔 `docker compose`로 구조를 이해하고, 그 다음에 Podman 쪽으로 넘어가는 게 가장 덜 꼬인다.
