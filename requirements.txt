@@ -2,6 +2,3 @@ redis>=5.0,<6.0
 fastapi>=0.115,<1.0
 uvicorn[standard]>=0.30,<1.0
 locust>=2.29,<3.0
-aspose-cells==26.2.0
-JPype1==1.6.0
-loguru==0.7.3

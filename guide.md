@@ -46,15 +46,15 @@ FastAPI response
 
 ## 3. 파일별 역할
 
-- [app/config.py](/home/luke/pabilica/trescal-architecture/app/config.py): Redis 접속 정보, key 이름, TTL, 타임아웃 여유 시간을 모아둔 설정 파일
-- [app/api.py](/home/luke/pabilica/trescal-architecture/app/api.py): FastAPI 서버. 작업 등록, 상태 조회, 결과 조회, health/stats 제공
-- [app/worker_demo.py](/home/luke/pabilica/trescal-architecture/app/worker_demo.py): Redis 큐를 소비하는 Worker 프로세스
-- [app/producer_demo.py](/home/luke/pabilica/trescal-architecture/app/producer_demo.py): 로컬에서 동작 확인할 때 쓰는 CLI Producer
-- [docker-compose.yml](/home/luke/pabilica/trescal-architecture/docker-compose.yml): Redis, API, Worker, Locust를 한 번에 띄우는 실행 구성
+- [`app/config.py`](app/config.py): Redis 접속 정보, key 이름, TTL, 타임아웃 여유 시간을 모아둔 설정 파일
+- [`app/api.py`](app/api.py): FastAPI 서버. 작업 등록, 상태 조회, 결과 조회, health/stats 제공
+- [`app/worker_demo.py`](app/worker_demo.py): Redis 큐를 소비하는 Worker 프로세스
+- [`app/producer_demo.py`](app/producer_demo.py): 로컬에서 동작 확인할 때 쓰는 CLI Producer
+- [`docker-compose.yml`](docker-compose.yml): Redis, API, Worker, Locust를 한 번에 띄우는 실행 구성
 
 ## 4. Redis 키 설계
 
-[app/config.py](/home/luke/pabilica/trescal-architecture/app/config.py)에서 아래 key들을 정의한다.
+[`app/config.py`](app/config.py)에서 아래 key들을 정의한다.
 
 - `demo:queue`
 - `demo:job:<job_id>`
@@ -98,7 +98,7 @@ FastAPI response
 
 ## 6. API가 하는 일
 
-[app/api.py](/home/luke/pabilica/trescal-architecture/app/api.py)에서 제일 중요한 엔드포인트는 `POST /jobs`다.
+[`app/api.py`](app/api.py)에서 제일 중요한 엔드포인트는 `POST /jobs`다.
 
 흐름은 거의 아래와 같다.
 
@@ -140,7 +140,7 @@ FastAPI response
 
 ## 8. Worker가 하는 일
 
-[app/worker_demo.py](/home/luke/pabilica/trescal-architecture/app/worker_demo.py)의 핵심은 `main()`과 `_process_job()`이다.
+[`app/worker_demo.py`](app/worker_demo.py)의 핵심은 `main()`과 `_process_job()`이다.
 
 Worker 루프는 아래처럼 생각하면 된다.
 
@@ -198,7 +198,7 @@ while True:
 
 ## 11. 예외 처리 설계
 
-[app/worker_demo.py](/home/luke/pabilica/trescal-architecture/app/worker_demo.py)에서 좋은 부분은 "에러가 나도 API를 영원히 기다리게 두지 않으려는 의도"가 분명하다는 점이다.
+[`app/worker_demo.py`](app/worker_demo.py)에서 좋은 부분은 "에러가 나도 API를 영원히 기다리게 두지 않으려는 의도"가 분명하다는 점이다.
 
 Worker 처리 중 예외가 나면:
 
@@ -208,7 +208,7 @@ Worker 처리 중 예외가 나면:
 
 즉, 실패해도 반드시 응답 경로를 남긴다.
 
-[app/api.py](/home/luke/pabilica/trescal-architecture/app/api.py)도 타임아웃을 둔다.
+[`app/api.py`](app/api.py)도 타임아웃을 둔다.
 
 - `timeout = work_s + JOB_TIMEOUT_GRACE_S`
 
@@ -221,7 +221,7 @@ Worker 처리 중 예외가 나면:
 
 ## 12. TTL이 있는 이유
 
-[app/config.py](/home/luke/pabilica/trescal-architecture/app/config.py)에는 TTL이 정의돼 있다.
+[`app/config.py`](app/config.py)에는 TTL이 정의돼 있다.
 
 - `RESULT_TTL_S = 3600`
 - `REPLY_TTL_S = 600`
@@ -237,7 +237,7 @@ Worker 처리 중 예외가 나면:
 
 ## 13. `producer_demo.py`는 왜 있나
 
-[app/producer_demo.py](/home/luke/pabilica/trescal-architecture/app/producer_demo.py)는 API 없이도 흐름을 확인해보는 로컬 CLI 도구다.
+[`app/producer_demo.py`](app/producer_demo.py)는 API 없이도 흐름을 확인해보는 로컬 CLI 도구다.
 
 학습 관점에서는 오히려 이 파일이 Redis 흐름을 직접 보기 좋다.
 
@@ -253,7 +253,7 @@ Worker 처리 중 예외가 나면:
 
 ## 14. Compose 구조는 왜 이렇게 되어 있나
 
-[docker-compose.yml](/home/luke/pabilica/trescal-architecture/docker-compose.yml)을 보면 서비스는 5개다.
+[`docker-compose.yml`](docker-compose.yml)을 보면 서비스는 5개다.
 
 - `redis`
 - `api`
@@ -273,11 +273,11 @@ Worker 처리 중 예외가 나면:
 
 처음부터 문서 전체를 다 읽기보다 아래 순서가 낫다.
 
-1. [app/config.py](/home/luke/pabilica/trescal-architecture/app/config.py)에서 key 구조를 먼저 본다.
-2. [app/worker_demo.py](/home/luke/pabilica/trescal-architecture/app/worker_demo.py)에서 queue 소비 흐름을 본다.
-3. [app/api.py](/home/luke/pabilica/trescal-architecture/app/api.py)에서 요청이 어떻게 queue로 연결되는지 본다.
-4. [docker-compose.yml](/home/luke/pabilica/trescal-architecture/docker-compose.yml)에서 서비스 구성을 본다.
-5. 마지막에 [app/producer_demo.py](/home/luke/pabilica/trescal-architecture/app/producer_demo.py)를 보고 보조 도구 역할을 이해한다.
+1. [`app/config.py`](app/config.py)에서 key 구조를 먼저 본다.
+2. [`app/worker_demo.py`](app/worker_demo.py)에서 queue 소비 흐름을 본다.
+3. [`app/api.py`](app/api.py)에서 요청이 어떻게 queue로 연결되는지 본다.
+4. [`docker-compose.yml`](docker-compose.yml)에서 서비스 구성을 본다.
+5. 마지막에 [`app/producer_demo.py`](app/producer_demo.py)를 보고 보조 도구 역할을 이해한다.
 
 이 순서가 좋은 이유는 시스템의 중심이 `UI`가 아니라 `queue flow`이기 때문이다.
 
